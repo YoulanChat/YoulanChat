@@ -109,7 +109,8 @@ body { background: var(--bg-app); color: var(--text-primary); }
 .date-sep span { background: var(--bg-bubble-in); color: var(--text-secondary); font-size: 12px; padding: 6px 12px; border-radius: 8px; box-shadow: var(--shadow-sm); text-transform: uppercase; font-weight: 500; }
 
 /* ================= MESSAGE BUBBLES ================= */
-.bubble { max-width: 65%; padding: 6px 7px 8px 9px; border-radius: 7.5px; position: relative; box-shadow: var(--shadow-sm); color: var(--text-primary); animation: popIn 0.2s cubic-bezier(0.1, 0.82, 0.25, 1); margin-bottom: 8px; }
+.bubble { max-width: 65%; padding: 6px 7px 8px 9px; border-radius: 7.5px; position: relative; box-shadow: var(--shadow-sm); color: var(--text-primary); margin-bottom: 8px; }
+.bubble.bubble-new { animation: popIn 0.2s cubic-bezier(0.1, 0.82, 0.25, 1); }
 @keyframes popIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .bubble.mine { background: var(--bg-bubble-out); align-self: flex-end; border-top-right-radius: 0; }
 .bubble.theirs { background: var(--bg-bubble-in); align-self: flex-start; border-top-left-radius: 0; }
@@ -225,11 +226,11 @@ body { background: var(--bg-app); color: var(--text-primary); }
 .call-modal .remote-video { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; overflow: hidden; background: #000; }
 .call-modal .remote-video #remote-video { width: 100%; height: 100%; object-fit: cover; background: #000; position: absolute; inset: 0; }
 .call-modal .remote-video .connecting-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8696a0; font-size: 14px; z-index: 2; background: rgba(11,20,26,0.85); gap: 14px; }
-.call-info { position: absolute; top: 40px; left: 0; right: 0; color: #fff; text-align: center; z-index: 10; }
+.call-info { position: absolute; top: 40px; left: 0; right: 0; color: #fff; text-align: center; z-index: 10; pointer-events: none; }
 .call-info .call-name { font-size: 24px; font-weight: 500; }
 .call-info .call-dur { font-size: 15px; opacity: 0.8; margin-top: 6px; }
 .call-controls { padding: 30px; display: flex; gap: 20px; justify-content: center; background: #111b21; z-index: 10; }
-.call-controls button { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; color: #fff; background: #2a3942; transition: background 0.2s; display: flex; align-items: center; justify-content: center; }
+.call-controls button { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; color: #fff; background: #2a3942; transition: background 0.2s; display: flex; align-items: center; justify-content: center; font-size: 22px; }
 .call-controls button:hover { background: #3b4a54; }
 .call-controls button.end { background: var(--red); }
 .local-video-pip {
@@ -362,13 +363,26 @@ function connectWS() {
         const map = {};
         for (const d of m.devices) map[d.id] = d;
         for (const id in state.peers) state.peers[id].online = false;
+        let newPeers = false;
         for (const id in map) {
           if (id === state.me.id) continue;
+          if (!state.peers[id]) newPeers = true;
           state.peers[id] = { ...state.peers[id], ...map[id] };
         }
-        // debounce presence re-render so typing isn't interrupted
-        clearTimeout(window.__presenceT);
-        window.__presenceT = setTimeout(render, 120);
+        // remove peers that disappeared
+        for (const id in state.peers) if (!map[id]) { /* keep, just offline */ }
+        if (newPeers) {
+          clearTimeout(window.__presenceT);
+          window.__presenceT = setTimeout(render, 120);
+        } else {
+          Object.keys(state.peers).forEach(id => refreshChatListItem(id));
+          if (state.activePeer) {
+            const st = document.querySelector('.chat-header .status');
+            if (st && !state.typing[state.activePeer]) {
+              st.textContent = state.peers[state.activePeer]?.online ? 'online' : 'offline';
+            }
+          }
+        }
         break;
       }
       case 'history': {
@@ -384,17 +398,22 @@ function connectWS() {
         const other = m.message.from;
         const chat = state.chats[other] || (state.chats[other] = []);
         if (!chat.find(x => x.id === m.message.id)) chat.push(m.message);
-        
+
         notifAudio.currentTime = 0;
         notifAudio.play().catch(err => console.log('Notification error:', err));
 
         if (state.activePeer === other) {
           socket.send(JSON.stringify({ type: 'read', from: state.me.id, to: other, ids: [m.message.id] }));
           socket.send(JSON.stringify({ type: 'delivered', from: state.me.id, to: other, ids: [m.message.id] }));
+          saveChats();
+          appendBubbleToDOM(m.message);
+          refreshChatListItem(other);
         } else {
           state.unread[other] = (state.unread[other] || 0) + 1;
+          saveChats();
+          if (!state.peers[other]) render(); else refreshChatListItem(other);
         }
-        saveChats(); render(); break;
+        break;
       }
       case 'reaction': {
         notifAudio.currentTime = 0;
@@ -402,18 +421,31 @@ function connectWS() {
 
         const chat = state.chats[m.from] || [];
         const msg = chat.find(x => x.id === m.msgId);
-        if (msg) { msg.reaction = m.emoji; saveChats(); render(); }
+        if (msg) {
+          msg.reaction = m.emoji;
+          saveChats();
+          updateBubbleReaction(msg.id, m.emoji);
+          refreshChatListItem(m.from);
+        }
         break;
       }
       case 'delivered': {
         const chat = state.chats[m.from] || [];
-        for (const msg of chat) if (m.ids.includes(msg.id) && msg.status === 'sent') msg.status = 'delivered';
-        saveChats(); render(); break;
+        for (const msg of chat) if (m.ids.includes(msg.id) && msg.status === 'sent') {
+          msg.status = 'delivered';
+          updateBubbleMeta(msg.id, 'delivered');
+        }
+        saveChats();
+        break;
       }
       case 'read': {
         const chat = state.chats[m.from] || [];
-        for (const msg of chat) if (m.ids.includes(msg.id)) msg.status = 'read';
-        saveChats(); render(); break;
+        for (const msg of chat) if (m.ids.includes(msg.id)) {
+          msg.status = 'read';
+          updateBubbleMeta(msg.id, 'read');
+        }
+        saveChats();
+        break;
       }
       case 'typing': {
         const was = !!state.typing[m.from];
@@ -423,8 +455,22 @@ function connectWS() {
       }
       case 'delete': {
         const chat = state.chats[m.from] || [];
-        state.chats[m.from] = chat.map(x => x.id === m.id ? { ...x, deleted: true, text: null, dataUrl: null, reaction: null } : x);
-        saveChats(); render(); break;
+        let updated = null;
+        state.chats[m.from] = chat.map(x => {
+          if (x.id === m.id) { updated = { ...x, deleted: true, text: null, dataUrl: null, reaction: null }; return updated; }
+          return x;
+        });
+        saveChats();
+        if (updated) {
+          const bubble = document.querySelector(`.bubble[data-msg-id="${m.id}"]`);
+          if (bubble) {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = renderBubble(updated);
+            bubble.replaceWith(wrap.firstElementChild);
+          }
+          refreshChatListItem(m.from);
+        }
+        break;
       }
       case 'signal': handleSignal(m.from, m.data); break;
     }
@@ -435,7 +481,7 @@ function wsSend(m) { if (socket && socket.readyState === 1) socket.send(JSON.str
 
 function addCallLog(peerId, isVideo, status, duration = 0, isIncoming = false) {
   const chat = state.chats[peerId] || (state.chats[peerId] = []);
-  chat.push({
+  const log = {
     id: 'call-' + Math.random().toString(36).slice(2, 9),
     from: isIncoming ? peerId : state.me.id,
     to: isIncoming ? state.me.id : peerId,
@@ -444,13 +490,16 @@ function addCallLog(peerId, isVideo, status, duration = 0, isIncoming = false) {
     status,
     duration,
     createdAt: Date.now()
-  });
-  saveChats(); render();
+  };
+  chat.push(log);
+  saveChats();
+  if (state.activePeer === peerId) appendBubbleToDOM(log);
+  refreshChatListItem(peerId);
 }
 
 function sendMessage(peerId, content) {
   if (!peerId || !state.me) return;
-  
+
   const msg = {
     id: 'msg-' + Math.random().toString(36).slice(2, 12),
     from: state.me.id, to: peerId, createdAt: Date.now(), status: 'sent',
@@ -458,9 +507,18 @@ function sendMessage(peerId, content) {
     ...content,
   };
   const chat = state.chats[peerId] || (state.chats[peerId] = []);
-  chat.push(msg); state.replyTo = null; saveChats();
+  chat.push(msg);
+  state.replyTo = null;
+  saveChats();
+
   wsSend({ type: 'message', from: state.me.id, to: peerId, message: msg });
-  render();
+
+  if (state.activePeer === peerId) {
+    const cr = document.querySelector('.composer-reply');
+    if (cr) cr.remove();
+    appendBubbleToDOM(msg);
+  }
+  refreshChatListItem(peerId);
 }
 function previewOf(m) {
   if (!m) return '';
@@ -505,7 +563,10 @@ function sendText() {
   if (!t || !state.activePeer) return;
   state.draft[state.activePeer] = '';
   sendMessage(state.activePeer, { kind: 'text', text: t });
-  requestAnimationFrame(() => { const n = document.querySelector('#composer-text'); if (n) { n.focus(); n.style.height = '24px'; } updateSendBtn(); });
+  // reset composer
+  const n = document.querySelector('#composer-text');
+  if (n) { n.value = ''; n.style.height = '24px'; n.focus(); }
+  updateSendBtn();
 }
 
 // Voice
@@ -520,13 +581,13 @@ async function startRecording() {
       stream.getTracks().forEach(t => t.stop());
       clearInterval(recTimer);
       state.recording = false;
-      if (recChunks.length === 0) { render(); return; }
+      if (recChunks.length === 0) { mountComposer(); return; }
       const blob = new Blob(recChunks, { type: 'audio/webm' });
       const dataUrl = await blobToDataUrl(blob);
       const dur = Math.round((Date.now() - recStart) / 1000);
       state.recordSecs = 0;
       if (state.activePeer) sendMessage(state.activePeer, { kind: 'voice', dataUrl, duration: dur });
-      render();
+      mountComposer();
     };
     mediaRecorder.start();
     state.recording = true; state.recordSecs = 0;
@@ -534,7 +595,7 @@ async function startRecording() {
       state.recordSecs = Math.round((Date.now() - recStart) / 1000);
       const el = document.querySelector('#rec-secs'); if (el) el.textContent = `${String(Math.floor(state.recordSecs/60)).padStart(2,'0')}:${String(state.recordSecs%60).padStart(2,'0')}`;
     }, 200);
-    render();
+    mountComposer();
   } catch (e) { alert('Microphone error: ' + e.message); }
 }
 function stopRecording(send_) {
@@ -543,7 +604,7 @@ function stopRecording(send_) {
     recChunks = [];
     mediaRecorder.onstop = () => {
       mediaRecorder.stream.getTracks().forEach(t => t.stop());
-      clearInterval(recTimer); state.recording = false; render();
+      clearInterval(recTimer); state.recording = false; mountComposer();
     };
   }
   if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
@@ -585,25 +646,26 @@ async function startCall(type) {
       attachCallStreams();
     };
     pc.onconnectionstatechange = () => {
+      if (!state.call) return;
       if (pc.connectionState === 'connected') state.call.state = 'connected';
       if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) endCall(false);
-      render();
+      updateCallDuration();
     };
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     wsSend({ type: 'signal', from: state.me.id, to: peerId, data: { kind: 'offer', callType: type, sdp: offer } });
-    render();
+    mountCallModal();
   } catch (e) { alert('Call start failed: ' + e.message); outgoingAudio.pause(); }
 }
 async function handleSignal(from, data) {
   if (data.kind === 'offer') {
     if (state.call) { wsSend({ type: 'signal', from: state.me.id, to: from, data: { kind: 'end' } }); return; }
     state.incomingCall = { peerId: from, type: data.callType, sdp: data.sdp };
-    
+
     ringtoneAudio.currentTime = 0;
     ringtoneAudio.play().catch(err => console.log('Ringtone block:', err));
-    
-    render();
+
+    mountIncomingModal();
   } else if (data.kind === 'answer' && state.call?.peerId === from) {
     outgoingAudio.pause();
     await state.call.pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
@@ -613,11 +675,11 @@ async function handleSignal(from, data) {
       if (state.call.state === 'connected') addCallLog(from, state.call.type === 'video', 'answered', dur, false);
       endCall(false);
     }
-    if (state.incomingCall?.peerId === from) { 
+    if (state.incomingCall?.peerId === from) {
       addCallLog(from, state.incomingCall.type === 'video', 'missed', 0, true);
-      state.incomingCall = null; 
+      state.incomingCall = null;
       ringtoneAudio.pause();
-      render(); 
+      unmountIncomingModal();
     }
   } else if (data.candidate && state.call?.peerId === from) {
     try { await state.call.pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch {}
@@ -625,13 +687,14 @@ async function handleSignal(from, data) {
 }
 async function acceptCall() {
   const inc = state.incomingCall; if (!inc) return;
-  ringtoneAudio.pause(); 
+  ringtoneAudio.pause();
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: inc.type === 'video' });
     const pc = new RTCPeerConnection(RTC_CFG);
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
     state.call = { peerId: inc.peerId, type: inc.type, stream, pc, startedAt: Date.now(), state: 'connected', muted: false, cameraOff: false, remoteStream: null };
     state.incomingCall = null;
+    unmountIncomingModal();
     pc.onicecandidate = e => e.candidate && wsSend({ type: 'signal', from: state.me.id, to: inc.peerId, data: { candidate: e.candidate } });
     pc.ontrack = e => {
       state.call.remoteStream = e.streams[0];
@@ -641,15 +704,16 @@ async function acceptCall() {
     const ans = await pc.createAnswer();
     await pc.setLocalDescription(ans);
     wsSend({ type: 'signal', from: state.me.id, to: inc.peerId, data: { kind: 'answer', sdp: ans } });
-    render();
-  } catch (e) { alert('Cannot accept: ' + e.message); state.incomingCall = null; render(); }
+    mountCallModal();
+  } catch (e) { alert('Cannot accept: ' + e.message); state.incomingCall = null; unmountIncomingModal(); }
 }
 function rejectCall() {
   if (!state.incomingCall) return;
   ringtoneAudio.pause();
   addCallLog(state.incomingCall.peerId, state.incomingCall.type === 'video', 'rejected', 0, true);
   wsSend({ type: 'signal', from: state.me.id, to: state.incomingCall.peerId, data: { kind: 'end' } });
-  state.incomingCall = null; render();
+  state.incomingCall = null;
+  unmountIncomingModal();
 }
 function endCall(notify = true) {
   if (!state.call) return;
@@ -660,13 +724,25 @@ function endCall(notify = true) {
   }
   state.call.stream?.getTracks().forEach(t => t.stop());
   try { state.call.pc?.close(); } catch {}
-  state.call = null; 
-  outgoingAudio.pause(); 
-  ringtoneAudio.pause(); 
-  render();
+  state.call = null;
+  outgoingAudio.pause();
+  ringtoneAudio.pause();
+  unmountCallModal();
 }
-function toggleMute() { if (!state.call) return; state.call.muted = !state.call.muted; state.call.stream.getAudioTracks().forEach(t => t.enabled = !state.call.muted); render(); }
-function toggleCam() { if (!state.call) return; state.call.cameraOff = !state.call.cameraOff; state.call.stream.getVideoTracks().forEach(t => t.enabled = !state.call.cameraOff); render(); }
+function toggleMute() {
+  if (!state.call) return;
+  state.call.muted = !state.call.muted;
+  state.call.stream.getAudioTracks().forEach(t => t.enabled = !state.call.muted);
+  const btn = document.querySelector('.call-controls button[data-action="mute"]');
+  if (btn) btn.textContent = state.call.muted ? '🔇' : '🔊';
+}
+function toggleCam() {
+  if (!state.call) return;
+  state.call.cameraOff = !state.call.cameraOff;
+  state.call.stream.getVideoTracks().forEach(t => t.enabled = !state.call.cameraOff);
+  const btn = document.querySelector('.call-controls button[data-action="cam"]');
+  if (btn) btn.textContent = state.call.cameraOff ? '📷' : '🎥';
+}
 
 function attachCallStreams() {
   if (!state.call) return;
@@ -683,6 +759,39 @@ function attachCallStreams() {
   if (state.call.remoteStream) {
     const ov = document.querySelector('.remote-video .connecting-overlay');
     if (ov) ov.remove();
+  }
+}
+
+function mountCallModal() {
+  unmountCallModal();
+  if (!state.call) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = renderCall();
+  document.body.appendChild(tmp.firstElementChild);
+  attachCallStreams();
+  updateCallDuration();
+}
+function unmountCallModal() {
+  document.querySelector('.call-modal')?.remove();
+}
+function mountIncomingModal() {
+  unmountIncomingModal();
+  if (!state.incomingCall) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = renderIncoming();
+  document.body.appendChild(tmp.firstElementChild);
+}
+function unmountIncomingModal() {
+  document.querySelector('.modal-bg[data-modal="incoming"]')?.remove();
+}
+function updateCallDuration() {
+  const el = document.querySelector('#call-dur');
+  if (!el || !state.call) return;
+  if (state.call.state === 'connected') {
+    const s = Math.floor((Date.now() - state.call.startedAt)/1000);
+    el.textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  } else {
+    el.textContent = 'Calling…';
   }
 }
 
@@ -716,6 +825,7 @@ window.seekAudio = (e, id) => {
 };
 window.onAudioTimeUpdate = (id) => {
   const audio = document.getElementById('audio-' + id);
+  if (!audio.duration) return;
   const pct = (audio.currentTime / audio.duration) * 100;
   const bars = document.querySelectorAll(`#wave-${id} .vn-bar`);
   const activeCount = Math.floor((pct / 100) * bars.length);
@@ -730,17 +840,205 @@ window.onAudioTimeUpdate = (id) => {
   }
 };
 window.onAudioEnded = (id) => {
-  document.getElementById('play-icon-' + id).innerHTML = ICONS.play;
+  const icon = document.getElementById('play-icon-' + id);
+  if (icon) icon.innerHTML = ICONS.play;
   document.querySelectorAll(`#wave-${id} .vn-bar`).forEach(b => b.classList.remove('played'));
 };
 
-// Render
+/* =====================================================
+   TARGETED DOM HELPERS (no full re-render)
+   ===================================================== */
+
+function appendBubbleToDOM(m) {
+  const msgs = document.querySelector('#messages');
+  if (!msgs || !state.activePeer) return;
+  const peerId = state.activePeer;
+
+  const ind = msgs.querySelector('.typing-indicator');
+  if (ind) ind.remove();
+
+  // determine date separator
+  const seps = msgs.querySelectorAll('.date-sep span');
+  const lastSepText = seps.length ? seps[seps.length - 1].textContent.trim().toUpperCase() : '';
+  const today = new Date().toDateString();
+  const yest = new Date(Date.now() - 86400000).toDateString();
+  const md = new Date(m.createdAt).toDateString();
+  let txt = new Date(m.createdAt).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
+  if (md === today) txt = 'TODAY';
+  else if (md === yest) txt = 'YESTERDAY';
+  if (txt !== lastSepText) {
+    const sep = document.createElement('div');
+    sep.className = 'date-sep';
+    sep.innerHTML = `<span>${txt}</span>`;
+    msgs.appendChild(sep);
+  }
+
+  const wrap = document.createElement('div');
+  wrap.innerHTML = renderBubble(m);
+  const node = wrap.firstElementChild;
+  node.classList.add('bubble-new');
+  msgs.appendChild(node);
+
+  if (state.typing[peerId]) {
+    const d = document.createElement('div');
+    d.className = 'typing-indicator';
+    d.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+    msgs.appendChild(d);
+  }
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function updateBubbleMeta(msgId, status) {
+  const el = document.querySelector(`.bubble[data-msg-id="${msgId}"] .meta`);
+  if (!el) return;
+  // last child span is the check
+  const spans = el.querySelectorAll('span');
+  if (!spans.length) return;
+  const checkSpan = spans[spans.length - 1];
+  if (status === 'read') checkSpan.outerHTML = `<span style="color:var(--blue-check)">${ICONS.check2}</span>`;
+  else if (status === 'delivered') checkSpan.outerHTML = `<span>${ICONS.check2}</span>`;
+  else checkSpan.outerHTML = `<span>${ICONS.check1}</span>`;
+}
+
+function updateBubbleReaction(msgId, emoji) {
+  const bubble = document.querySelector(`.bubble[data-msg-id="${msgId}"]`);
+  if (!bubble) return;
+  let badge = bubble.querySelector('.reaction-badge');
+  if (!emoji) { if (badge) badge.remove(); return; }
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.className = 'reaction-badge';
+    bubble.appendChild(badge);
+  }
+  badge.textContent = emoji;
+}
+
+function refreshChatListItem(peerId) {
+  const list = document.querySelector('.chat-list');
+  if (!list) return;
+  const p = state.peers[peerId];
+  if (!p) return;
+  const existing = list.querySelector(`.chat-item[data-id="${peerId}"]`);
+  const chat = state.chats[peerId] || [];
+  const last = chat[chat.length - 1];
+  const unread = state.unread[peerId] || 0;
+  let previewText = last ? previewOf(last) : (p.online ? 'Online' : 'Offline');
+  if (last && last.reaction) {
+    previewText = last.from === state.me.id ? `You reacted "${last.reaction}"` : `React "${last.reaction}" to your message`;
+  }
+  const html = `<div class="avatar-wrap">
+      <div class="avatar" style="width:49px; height:49px; font-size:20px;">${esc(p.name[0]?.toUpperCase() || '?')}</div>
+      ${p.online ? '<div class="online-dot"></div>' : ''}
+    </div>
+    <div class="body">
+      <div class="row-top">
+        <div class="name">${esc(p.name)}</div>
+        <div class="time">${last ? fmtTime(last.createdAt) : ''}</div>
+      </div>
+      <div class="row-bottom">
+        <div class="preview" style="${last && last.reaction ? 'color:var(--green);font-weight:500;' : ''}">${esc(previewText)}</div>
+        ${unread > 0 ? `<div class="unread">${unread}</div>` : ''}
+      </div>
+    </div>`;
+  if (existing) {
+    existing.innerHTML = html;
+    existing.classList.toggle('active', state.activePeer === peerId);
+    list.prepend(existing);
+  } else {
+    const el = document.createElement('div');
+    el.className = 'chat-item' + (state.activePeer === peerId ? ' active' : '');
+    el.dataset.action = 'select';
+    el.dataset.id = peerId;
+    el.innerHTML = html;
+    list.prepend(el);
+  }
+  const placeholder = list.querySelector('div[style*="Looking for devices"]');
+  if (placeholder) placeholder.remove();
+}
+
+function updateTypingStatus() {
+  const p = state.peers[state.activePeer];
+  if (!p) return;
+  const st = document.querySelector('.chat-header .status');
+  if (st) st.textContent = state.typing[p.id] ? 'typing…' : (p.online ? 'online' : 'offline');
+  const msgs = document.querySelector('#messages');
+  if (!msgs) return;
+  let ind = msgs.querySelector('.typing-indicator');
+  if (state.typing[p.id]) {
+    if (!ind) {
+      ind = document.createElement('div');
+      ind.className = 'typing-indicator';
+      ind.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+      msgs.appendChild(ind);
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+  } else if (ind) {
+    ind.remove();
+  }
+}
+
+// Rebuild composer / recording bar (used after recording / reply changes)
+function mountComposer() {
+  if (!state.activePeer) return;
+  const old = document.querySelector('.composer, .recording-bar');
+  const oldReply = document.querySelector('.composer-reply');
+  if (oldReply) oldReply.remove();
+  if (!old) return;
+
+  // Reply preview if any
+  if (state.replyTo) {
+    const div = document.createElement('div');
+    div.className = 'composer-reply';
+    div.innerHTML = `<div class="bar"></div>
+      <div class="info"><strong>${esc(state.peers[state.replyTo.from]?.name || 'You')}</strong><span>${esc(previewOf(state.replyTo))}</span></div>
+      <button class="close" data-action="cancel-reply">✕</button>`;
+    old.parentNode.insertBefore(div, old);
+  }
+
+  if (state.recording) {
+    if (!old.classList.contains('recording-bar')) {
+      const div = document.createElement('div');
+      div.innerHTML = `<div class="recording-bar">
+        <div class="dot"></div>
+        <div class="timer" id="rec-secs">${String(Math.floor(state.recordSecs/60)).padStart(2,'0')}:${String(state.recordSecs%60).padStart(2,'0')}</div>
+        <button class="btn-cancel" data-action="cancel-rec">${ICONS.trash} Cancel</button>
+        <button class="btn-send" data-action="stop-rec">${ICONS.send} Send</button>
+      </div>`;
+      const rb = div.firstElementChild;
+      old.replaceWith(rb);
+    }
+  } else {
+    if (!old.classList.contains('composer')) {
+      const div = document.createElement('div');
+      div.innerHTML = `<div class="composer">
+        <button class="icon-btn" data-action="attach">${ICONS.attach}</button>
+        <input type="file" id="file-input" hidden multiple>
+        <div class="input-wrap">
+          <textarea id="composer-text" placeholder="Type a message" rows="1"></textarea>
+        </div>
+        <button class="send-btn" id="send-btn" data-action="record">${ICONS.mic}</button>
+      </div>`;
+      const comp = div.firstElementChild;
+      old.replaceWith(comp);
+      // re-bind
+      const ta = comp.querySelector('#composer-text');
+      if (ta) { ta.addEventListener('input', onComposerInput); ta.addEventListener('keydown', onKeyComposer); ta.value = state.draft[state.activePeer] || ''; }
+      const fi = comp.querySelector('#file-input');
+      if (fi) fi.addEventListener('change', onFile);
+      updateSendBtn();
+    }
+  }
+}
+
+/* =====================================================
+   FULL RENDER (only when needed: peer list changes, chat open/close, history)
+   ===================================================== */
+
 function render() {
   const app = document.getElementById('app');
   if (!state.me) { app.innerHTML = welcomeHtml(); bindWelcome(); return; }
   app.innerHTML = appHtml();
   bindApp();
-  attachCallStreams();
   scrollMsgs();
   restoreDraft();
 }
@@ -819,11 +1117,6 @@ function appHtml() {
     <main class="main-area ${open ? 'active' : ''}">
       ${open ? renderChat() : `<div class="empty-chat"><h2>YoulanChat Web</h2><p>Send and receive messages without keeping your phone online.<br>Use YoulanChat on up to 4 linked devices and 1 phone at the same time.</p></div>`}
     </main>
-    ${state.showSettings ? renderSettings() : ''}
-    ${state.showMenuFor ? renderMenu() : ''}
-    ${state.forwardingMsg ? renderForwardModal() : ''}
-    ${state.incomingCall ? renderIncoming() : ''}
-    ${state.call ? renderCall() : ''}
   `;
 }
 
@@ -842,12 +1135,10 @@ function renderList() {
     const chat = state.chats[p.id] || [];
     const last = chat[chat.length - 1];
     const unread = state.unread[p.id] || 0;
-    
     let previewText = last ? previewOf(last) : (p.online ? 'Online' : 'Offline');
     if (last && last.reaction) {
        previewText = last.from === state.me.id ? `You reacted "${last.reaction}"` : `React "${last.reaction}" to your message`;
     }
-
     return `<div class="chat-item ${state.activePeer === p.id ? 'active' : ''}" data-action="select" data-id="${p.id}">
       <div class="avatar-wrap">
         <div class="avatar" style="width:49px; height:49px; font-size:20px;">${esc(p.name[0]?.toUpperCase() || '?')}</div>
@@ -872,7 +1163,7 @@ function renderChat() {
   if (!p) { state.activePeer = null; return appHtml(); }
   const chat = state.chats[p.id] || [];
   const typing = state.typing[p.id];
-  
+
   let messagesHtml = '';
   let lastDate = '';
   chat.forEach(m => {
@@ -916,7 +1207,7 @@ function renderChat() {
     ${state.recording ? `
       <div class="recording-bar">
         <div class="dot"></div>
-        <div class="timer" id="rec-secs">00:00</div>
+        <div class="timer" id="rec-secs">${String(Math.floor(state.recordSecs/60)).padStart(2,'0')}:${String(state.recordSecs%60).padStart(2,'0')}</div>
         <button class="btn-cancel" data-action="cancel-rec">${ICONS.trash} Cancel</button>
         <button class="btn-send" data-action="stop-rec">${ICONS.send} Send</button>
       </div>` : `
@@ -934,7 +1225,7 @@ function renderChat() {
 function renderBubble(m) {
   const mine = m.from === state.me.id;
   let content = '';
-  
+
   if (m.kind === 'call') {
     const isMissed = m.status === 'missed' || m.status === 'rejected';
     const isIncoming = m.from !== state.me.id;
@@ -982,11 +1273,11 @@ function renderBubble(m) {
 
   const reply = m.replyTo ? `<div class="reply-quote"><strong>${esc(state.peers[m.replyTo.id]?.name || 'You')}</strong>↪ ${esc(m.replyTo.text)}</div>` : '';
   const forwarded = m.forwarded ? `<div class="forwarded-label">↪ Forwarded</div>` : '';
-  
+
   let check = '';
   if (m.kind !== 'call' && mine && !m.deleted) {
-    check = m.status === 'read' ? `<span style="color:var(--blue-check)">${ICONS.check2}</span>` : 
-            m.status === 'delivered' ? `<span>${ICONS.check2}</span>` : 
+    check = m.status === 'read' ? `<span style="color:var(--blue-check)">${ICONS.check2}</span>` :
+            m.status === 'delivered' ? `<span>${ICONS.check2}</span>` :
             `<span>${ICONS.check1}</span>`;
   }
 
@@ -1005,7 +1296,7 @@ function renderBubble(m) {
 }
 
 function renderSettings() {
-  return `<div class="modal-bg" data-action="close-settings-bg"><div class="modal">
+  return `<div class="modal-bg" data-modal="settings" data-action="close-settings-bg"><div class="modal">
     <h2>Settings</h2>
     <label style="display:block; font-size:14px; color:var(--text-secondary); margin-bottom:8px;">Display name</label>
     <input id="set-name" value="${esc(state.me.name)}" maxlength="30">
@@ -1023,7 +1314,7 @@ function renderSettings() {
 function renderMenu() {
   const m = findMsg(state.showMenuFor); if (!m) return '';
   const mine = m.from === state.me.id;
-  return `<div class="modal-bg" data-action="close-menu-bg" style="align-items:center;">
+  return `<div class="modal-bg" data-modal="menu" data-action="close-menu-bg" style="align-items:center;">
     <div style="display:flex; flex-direction:column; align-items:center;">
       <div class="emoji-bar">
         <button class="emoji-btn" data-action="react" data-emoji="👍">👍</button>
@@ -1046,7 +1337,7 @@ function renderMenu() {
 
 function renderForwardModal() {
   const peers = Object.values(state.peers).filter(p => p.id !== state.me.id);
-  return `<div class="modal-bg" data-action="close-forward-bg"><div class="modal">
+  return `<div class="modal-bg" data-modal="forward" data-action="close-forward-bg"><div class="modal">
     <h2>Forward to…</h2>
     <div class="forward-list">
       ${peers.map(p => `<div class="forward-item" data-action="do-forward" data-id="${p.id}">
@@ -1061,7 +1352,7 @@ function renderForwardModal() {
 function renderIncoming() {
   const inc = state.incomingCall;
   const name = state.peers[inc.peerId]?.name || 'Unknown';
-  return `<div class="modal-bg"><div class="modal" style="text-align:center;">
+  return `<div class="modal-bg" data-modal="incoming"><div class="modal" style="text-align:center;">
     <div class="avatar" style="width:80px; height:80px; font-size:32px; margin:0 auto 20px;">${esc(name[0])}</div>
     <h2 style="font-size:22px; font-weight:500;">${esc(name)}</h2>
     <p style="color:var(--text-secondary); margin-bottom:24px; font-size:14px;">Incoming ${inc.type} call…</p>
@@ -1075,12 +1366,10 @@ function renderIncoming() {
 function renderCall() {
   const c = state.call;
   const name = state.peers[c.peerId]?.name || 'Unknown';
-  const secs = Math.floor((Date.now() - c.startedAt) / 1000);
-  const dur = `${String(Math.floor(secs/60)).padStart(2,'0')}:${String(secs%60).padStart(2,'0')}`;
   return `<div class="call-modal">
     <div class="call-info">
       <div class="call-name">${esc(name)}</div>
-      <div class="call-dur" id="call-dur">${c.state === 'connected' ? dur : 'Calling…'}</div>
+      <div class="call-dur" id="call-dur">Calling…</div>
     </div>
     ${c.type === 'video'
       ? `<div class="remote-video">
@@ -1095,27 +1384,6 @@ function renderCall() {
       <button class="end" data-action="end">📞</button>
     </div>
   </div>`;
-}
-
-function updateTypingStatus() {
-  const p = state.peers[state.activePeer];
-  if (!p) return;
-  const st = document.querySelector('.chat-header .status');
-  if (st) st.textContent = state.typing[p.id] ? 'typing…' : (p.online ? 'online' : 'offline');
-  const msgs = document.querySelector('#messages');
-  if (!msgs) return;
-  let ind = msgs.querySelector('.typing-indicator');
-  if (state.typing[p.id]) {
-    if (!ind) {
-      ind = document.createElement('div');
-      ind.className = 'typing-indicator';
-      ind.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
-      msgs.appendChild(ind);
-    }
-    msgs.scrollTop = msgs.scrollHeight;
-  } else if (ind) {
-    ind.remove();
-  }
 }
 
 function bindApp() {
@@ -1142,6 +1410,10 @@ function restoreDraft() {
 }
 function findMsg(id) { for (const p in state.chats) { const m = state.chats[p].find(x => x.id === id); if (m) return m; } return null; }
 
+/* =====================================================
+   CLICK HANDLERS
+   ===================================================== */
+
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-action]'); if (!el) return;
   switch (el.dataset.action) {
@@ -1164,9 +1436,27 @@ document.addEventListener('click', e => {
       state.theme = state.theme === 'dark' ? 'light' : 'dark';
       localStorage.setItem('youlanchat-theme', state.theme);
       document.documentElement.setAttribute('data-theme', state.theme);
-      render(); break;
-    case 'open-settings': state.showSettings = true; render(); break;
-    case 'close-settings': case 'close-settings-bg': state.showSettings = false; render(); break;
+      // if settings modal open, just re-render it
+      document.querySelector('[data-modal="settings"]')?.remove();
+      if (state.showSettings) {
+        const tmp = document.createElement('div'); tmp.innerHTML = renderSettings();
+        document.body.appendChild(tmp.firstElementChild);
+      } else {
+        render();
+      }
+      break;
+    case 'open-settings': {
+      state.showSettings = true;
+      document.querySelector('[data-modal="settings"]')?.remove();
+      const tmp = document.createElement('div'); tmp.innerHTML = renderSettings();
+      document.body.appendChild(tmp.firstElementChild);
+      break;
+    }
+    case 'close-settings': case 'close-settings-bg': {
+      state.showSettings = false;
+      document.querySelector('[data-modal="settings"]')?.remove();
+      break;
+    }
     case 'save-settings': {
       const n = document.getElementById('set-name')?.value.trim();
       if (n) {
@@ -1175,7 +1465,9 @@ document.addEventListener('click', e => {
         if (i >= 0) { l[i].name = n; saveIdentities(l); }
         wsSend({ type: 'hello', from: state.me.id, name: n });
       }
-      state.showSettings = false; render(); break;
+      state.showSettings = false;
+      document.querySelector('[data-modal="settings"]')?.remove();
+      render(); break;
     }
     case 'audio-call': startCall('audio'); break;
     case 'video-call': startCall('video'); break;
@@ -1184,13 +1476,20 @@ document.addEventListener('click', e => {
     case 'end': endCall(); break;
     case 'mute': toggleMute(); break;
     case 'cam': toggleCam(); break;
-    
+
     case 'open-menu': {
       state.showMenuFor = el.dataset.id;
-      render(); break;
+      document.querySelector('[data-modal="menu"]')?.remove();
+      const tmp = document.createElement('div'); tmp.innerHTML = renderMenu();
+      if (tmp.firstElementChild) document.body.appendChild(tmp.firstElementChild);
+      break;
     }
-    case 'close-menu': case 'close-menu-bg': state.showMenuFor = null; render(); break;
-    
+    case 'close-menu': case 'close-menu-bg': {
+      state.showMenuFor = null;
+      document.querySelector('[data-modal="menu"]')?.remove();
+      break;
+    }
+
     case 'react': {
       const emoji = el.dataset.emoji;
       const msgId = state.showMenuFor;
@@ -1200,14 +1499,26 @@ document.addEventListener('click', e => {
         msg.reaction = emoji;
         saveChats();
         wsSend({ type: 'reaction', from: state.me.id, to: msg.from === state.me.id ? msg.to : msg.from, msgId, emoji });
+        updateBubbleReaction(msgId, emoji);
+        refreshChatListItem(peerId);
       }
-      state.showMenuFor = null; render(); break;
+      state.showMenuFor = null;
+      document.querySelector('[data-modal="menu"]')?.remove();
+      break;
     }
     case 'forward': {
       state.forwardingMsg = findMsg(state.showMenuFor);
-      state.showMenuFor = null; render(); break;
+      state.showMenuFor = null;
+      document.querySelector('[data-modal="menu"]')?.remove();
+      const tmp = document.createElement('div'); tmp.innerHTML = renderForwardModal();
+      document.body.appendChild(tmp.firstElementChild);
+      break;
     }
-    case 'close-forward': case 'close-forward-bg': state.forwardingMsg = null; render(); break;
+    case 'close-forward': case 'close-forward-bg': {
+      state.forwardingMsg = null;
+      document.querySelector('[data-modal="forward"]')?.remove();
+      break;
+    }
     case 'do-forward': {
       const peerId = el.dataset.id;
       const original = state.forwardingMsg;
@@ -1216,35 +1527,85 @@ document.addEventListener('click', e => {
         const chat = state.chats[peerId] || (state.chats[peerId] = []);
         chat.push(newMsg); saveChats();
         wsSend({ type: 'message', from: state.me.id, to: peerId, message: newMsg });
+        if (state.activePeer === peerId) appendBubbleToDOM(newMsg);
+        refreshChatListItem(peerId);
       }
-      state.forwardingMsg = null; render(); break;
+      state.forwardingMsg = null;
+      document.querySelector('[data-modal="forward"]')?.remove();
+      break;
     }
     case 'reply': {
-      const m = findMsg(state.showMenuFor); if (m) state.replyTo = m;
-      state.showMenuFor = null; render();
-      setTimeout(() => document.querySelector('#composer-text')?.focus(), 50); break;
+      const m = findMsg(state.showMenuFor);
+      if (m) state.replyTo = m;
+      state.showMenuFor = null;
+      document.querySelector('[data-modal="menu"]')?.remove();
+      mountComposer();
+      setTimeout(() => document.querySelector('#composer-text')?.focus(), 50);
+      break;
     }
-    case 'cancel-reply': state.replyTo = null; render(); break;
+    case 'cancel-reply': {
+      state.replyTo = null;
+      const cr = document.querySelector('.composer-reply');
+      if (cr) cr.remove();
+      break;
+    }
     case 'del-me': {
       const id = state.showMenuFor;
-      if (state.activePeer && id) { state.chats[state.activePeer] = state.chats[state.activePeer].filter(m => m.id !== id); saveChats(); }
-      state.showMenuFor = null; render(); break;
+      if (state.activePeer && id) {
+        state.chats[state.activePeer] = state.chats[state.activePeer].filter(m => m.id !== id);
+        saveChats();
+        const bubble = document.querySelector(`.bubble[data-msg-id="${id}"]`);
+        if (bubble) bubble.remove();
+        refreshChatListItem(state.activePeer);
+      }
+      state.showMenuFor = null;
+      document.querySelector('[data-modal="menu"]')?.remove();
+      break;
     }
     case 'del-all': {
       const id = state.showMenuFor;
       if (state.activePeer && id) {
-        state.chats[state.activePeer] = state.chats[state.activePeer].map(m => m.id === id ? { ...m, deleted: true, text: null, dataUrl: null, reaction: null } : m);
-        saveChats(); wsSend({ type: 'delete', from: state.me.id, id });
+        let updated = null;
+        state.chats[state.activePeer] = state.chats[state.activePeer].map(m => {
+          if (m.id === id) { updated = { ...m, deleted: true, text: null, dataUrl: null, reaction: null }; return updated; }
+          return m;
+        });
+        saveChats();
+        wsSend({ type: 'delete', from: state.me.id, id });
+        const bubble = document.querySelector(`.bubble[data-msg-id="${id}"]`);
+        if (bubble && updated) {
+          const wrap = document.createElement('div');
+          wrap.innerHTML = renderBubble(updated);
+          bubble.replaceWith(wrap.firstElementChild);
+        }
+        refreshChatListItem(state.activePeer);
       }
-      state.showMenuFor = null; render(); break;
+      state.showMenuFor = null;
+      document.querySelector('[data-modal="menu"]')?.remove();
+      break;
     }
   }
 });
 
-let pressT; 
-document.addEventListener('touchstart', e => { const b = e.target.closest('.bubble'); if (!b) return; pressT = setTimeout(() => { state.showMenuFor = b.dataset.msgId; render(); }, 550); }, { passive: true });
+let pressT;
+document.addEventListener('touchstart', e => { const b = e.target.closest('.bubble'); if (!b) return; pressT = setTimeout(() => {
+  if (!state.showMenuFor && b.dataset.msgId) {
+    state.showMenuFor = b.dataset.msgId;
+    document.querySelector('[data-modal="menu"]')?.remove();
+    const tmp = document.createElement('div'); tmp.innerHTML = renderMenu();
+    if (tmp.firstElementChild) document.body.appendChild(tmp.firstElementChild);
+  }
+}, 550); }, { passive: true });
 ['touchend','touchmove','touchcancel'].forEach(ev => document.addEventListener(ev, () => clearTimeout(pressT)));
-document.addEventListener('contextmenu', e => { const b = e.target.closest('.bubble'); if (!b) return; e.preventDefault(); state.showMenuFor = b.dataset.msgId; render(); });
+document.addEventListener('contextmenu', e => {
+  const b = e.target.closest('.bubble'); if (!b) return;
+  e.preventDefault();
+  if (!b.dataset.msgId) return;
+  state.showMenuFor = b.dataset.msgId;
+  document.querySelector('[data-modal="menu"]')?.remove();
+  const tmp = document.createElement('div'); tmp.innerHTML = renderMenu();
+  if (tmp.firstElementChild) document.body.appendChild(tmp.firstElementChild);
+});
 
 function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 function fmtTime(ts) { const d = new Date(ts), n = new Date(); return d.toDateString() === n.toDateString() ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString([], { month: 'short', day: 'numeric' }); }
@@ -1255,7 +1616,7 @@ function fmtSize(b) { if (b < 1024) return b + ' B'; if (b < 1024*1024) return (
   if (sid) { const m = getMyIdentity(); if (m) { state.me = m; state.chats = loadChats(m.id); } }
   if (state.me) connectWS();
   window.addEventListener('beforeunload', () => { if (state.me) wsSend({ type: 'bye', from: state.me.id }); });
-  setInterval(() => { const el = document.querySelector('#call-dur'); if (el && state.call?.state === 'connected') { const s = Math.floor((Date.now() - state.call.startedAt)/1000); el.textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; } }, 1000);
+  setInterval(updateCallDuration, 1000);
   render();
 })();
 </script>
