@@ -22,19 +22,15 @@
   --border: #222d34; --shadow-sm: 0 1px 0.5px rgba(0,0,0,.5); --shadow-md: 0 2px 5px rgba(0,0,0,.5);
   --chat-pattern: url('data:image/svg+xml;utf8,<svg width="300" height="300" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="300" fill="%230b141a"/><path d="M30 30 l10 10 M40 30 l-10 10 M100 80 l15 -15 M80 150 l20 20 M200 100 l10 10 M250 200 l15 -15 M150 250 l10 10" stroke="%231f2c33" fill="none" stroke-width="1" opacity="0.6"/></svg>');
 }
-
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
 body { background: var(--bg-app); color: var(--text-primary); }
 #app { height: 100%; display: flex; position: relative; overflow: hidden; }
-
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: rgba(11, 20, 26, 0.2); border-radius: 3px; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(233, 237, 239, 0.2); }
-
 .icon { width: 24px; height: 24px; fill: currentColor; display: inline-block; vertical-align: middle; }
 
-/* WELCOME */
 .welcome-screen { flex: 1; display: flex; align-items: center; justify-content: center; background: var(--bg-app); padding: 20px; z-index: 10; overflow-y: auto; }
 .welcome-card { background: var(--bg-sidebar); border-radius: 8px; padding: 40px; max-width: 420px; width: 100%; box-shadow: var(--shadow-md); text-align: center; margin: auto; }
 .welcome-logo { width: 80px; height: 80px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
@@ -54,9 +50,7 @@ body { background: var(--bg-app); color: var(--text-primary); }
 .btn-secondary { width: 100%; padding: 12px; background: var(--bg-app); border: none; color: var(--text-primary); border-radius: 8px; margin-bottom: 8px; font-weight: 500; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center;}
 .btn-secondary:hover { background: var(--border); }
 .btn-clear { background: transparent; color: var(--red); border: 1px solid var(--red); margin-top: 12px; font-size: 13px; padding: 8px; }
-.btn-clear:hover { background: rgba(234, 67, 53, 0.1); }
 
-/* SIDEBAR */
 .sidebar { width: 380px; display: flex; flex-direction: column; background: var(--bg-sidebar); border-right: 1px solid var(--border); flex-shrink: 0; z-index: 5; }
 .sidebar-header { background: var(--bg-header-light); padding: 10px 16px; display: flex; align-items: center; gap: 12px; min-height: 59px; }
 .avatar { width: 40px; height: 40px; border-radius: 50%; background: #dfe5e7; color: #667781; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; flex-shrink: 0; text-transform: uppercase; overflow: hidden; position: relative; }
@@ -96,7 +90,6 @@ body { background: var(--bg-app); color: var(--text-primary); }
 .chat-item .unread { background: var(--green); color: var(--bg-sidebar); font-size: 12px; font-weight: 600; min-width: 22px; height: 22px; border-radius: 11px; display: flex; align-items: center; justify-content: center; padding: 0 6px; margin-left: 8px; }
 [data-theme="dark"] .chat-item .unread { color: #111b21; }
 
-/* MAIN CHAT */
 .main-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat); background-image: var(--chat-pattern); position: relative; border-left: 1px solid var(--border); }
 .chat-header { background: var(--bg-header-light); padding: 10px 16px; display: flex; align-items: center; gap: 12px; min-height: 59px; z-index: 5; border-bottom: 1px solid var(--border); }
 .chat-header .back { display: none; background: none; border: none; color: var(--text-header); cursor: pointer; padding: 4px; margin-right: 4px; }
@@ -114,7 +107,6 @@ body { background: var(--bg-app); color: var(--text-primary); }
 .date-sep { text-align: center; margin: 12px 0; position: sticky; top: 0; z-index: 2; }
 .date-sep span { background: var(--bg-bubble-in); color: var(--text-secondary); font-size: 12px; padding: 6px 12px; border-radius: 8px; box-shadow: var(--shadow-sm); text-transform: uppercase; font-weight: 500; }
 
-/* BUBBLES */
 .bubble { max-width: 65%; padding: 6px 7px 8px 9px; border-radius: 7.5px; position: relative; box-shadow: var(--shadow-sm); color: var(--text-primary); margin-bottom: 8px; }
 .bubble.bubble-new { animation: popIn 0.2s cubic-bezier(0.1, 0.82, 0.25, 1); }
 @keyframes popIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -135,7 +127,6 @@ body { background: var(--bg-app); color: var(--text-primary); }
 .reply-quote { font-size: 13px; color: var(--text-secondary); border-left: 4px solid var(--green); padding: 4px 8px; margin-bottom: 6px; background: rgba(0,0,0,0.04); border-radius: 4px; display: flex; flex-direction: column; }
 [data-theme="dark"] .reply-quote { background: rgba(255,255,255,0.04); }
 .reply-quote strong { color: var(--green); font-size: 12px; margin-bottom: 2px; }
-
 .forwarded-label { font-size: 12px; font-style: italic; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
 
 .call-log { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-primary); padding: 4px; }
@@ -160,9 +151,7 @@ body { background: var(--bg-app); color: var(--text-primary); }
 [data-theme="dark"] .vn-speed { background: rgba(255,255,255,0.1); }
 
 .reaction-badge { position: absolute; bottom: -12px; right: 10px; background: var(--bg-bubble-in); border-radius: 12px; padding: 2px 6px; font-size: 14px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); z-index: 2; }
-.bubble.mine .reaction-badge { background: var(--bg-bubble-in); }
 
-/* COMPOSER */
 .composer { background: var(--bg-composer); padding: 10px 16px; display: flex; gap: 8px; align-items: flex-end; z-index: 5; min-height: 62px; }
 .composer .icon-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: color 0.2s; }
 .composer .icon-btn:hover { color: var(--text-primary); }
@@ -170,7 +159,6 @@ body { background: var(--bg-app); color: var(--text-primary); }
 .composer textarea { flex: 1; border: none; background: transparent; color: var(--text-primary); font-size: 15px; resize: none; outline: none; max-height: 100px; min-height: 24px; line-height: 20px; font-family: inherit; padding: 0; }
 .composer .send-btn { background: var(--green-dark); color: #fff; border: none; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.1s, background 0.2s; }
 .composer .send-btn:active { transform: scale(0.92); }
-.composer .send-btn:hover { background: var(--green); }
 
 .composer-reply { background: var(--bg-composer); padding: 8px 16px 0; display: flex; align-items: center; gap: 12px; }
 .composer-reply .bar { width: 4px; height: 35px; background: var(--green); border-radius: 2px; }
@@ -193,7 +181,6 @@ body { background: var(--bg-app); color: var(--text-primary); }
 .typing-dot:nth-child(2) { animation-delay: -0.16s; }
 @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
 
-/* MODALS */
 .modal-bg { position: fixed; inset: 0; background: rgba(11,20,26,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; backdrop-filter: blur(2px); animation: fadeIn 0.2s; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .modal { background: var(--bg-sidebar); border-radius: 12px; padding: 24px; max-width: 420px; width: 100%; box-shadow: var(--shadow-md); animation: slideUp 0.2s; max-height: 88vh; overflow-y: auto; }
@@ -211,7 +198,6 @@ body { background: var(--bg-app); color: var(--text-primary); }
 .forward-item { display: flex; align-items: center; gap: 12px; padding: 12px; cursor: pointer; border-radius: 8px; }
 .forward-item:hover { background: var(--bg-hover); }
 
-/* FULL-PAGE VIEWS (Settings / Profile / Tick) */
 .page-view { position: fixed; inset: 0; background: var(--bg-sidebar); z-index: 150; display: flex; flex-direction: column; animation: slideInRight 0.22s ease; }
 @keyframes slideInRight { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 .page-header { display: flex; align-items: center; gap: 12px; background: var(--bg-header-light); padding: 14px 16px; min-height: 60px; flex-shrink: 0; }
@@ -244,23 +230,24 @@ body { background: var(--bg-app); color: var(--text-primary); }
 .field-group input:focus, .field-group textarea:focus { border-color: var(--green); }
 .field-group textarea { min-height: 80px; }
 
-.tick-card { background: var(--bg-sidebar); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
-.tick-card .top { display: flex; align-items: center; gap: 12px; }
-.tick-card .top .tick-icon { flex-shrink: 0; }
-.tick-card .top .info { flex: 1; }
-.tick-card .top .info .title { font-size: 15px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
-.tick-card .top .info .sub { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
-.tick-card .owned-pill { background: rgba(0,168,132,0.15); color: var(--green-dark); font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 14px; flex-shrink: 0; }
-[data-theme="dark"] .tick-card .owned-pill { color: var(--green); }
-.tick-card .row { display: flex; gap: 8px; }
-.tick-card .row input { flex: 1; padding: 11px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-app); color: var(--text-primary); font-size: 14px; outline: none; font-family: monospace; letter-spacing: 1.5px; text-transform: uppercase; }
-.tick-card .row input:focus { border-color: var(--green); }
-.tick-card .row button { background: var(--green-dark); color: #fff; border: none; padding: 11px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.tick-card .row button:hover { background: var(--green); }
-.tick-card .error { color: var(--red); font-size: 12px; display: none; }
-.tick-card .error.show { display: block; }
-.tick-card .success { color: var(--green); font-size: 12px; display: none; }
-.tick-card .success.show { display: block; }
+/* TICK PAGE — single field */
+.tick-single { background: var(--bg-sidebar); border-radius: 14px; padding: 24px; border: 1px solid var(--border); }
+.tick-single .title-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.tick-single .title-row .icon-big { width: 48px; height: 48px; border-radius: 50%; background: #53bdeb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tick-single .title-row .icon-big svg { width: 26px; height: 26px; fill: #fff; }
+.tick-single .title-row .t { font-size: 17px; font-weight: 600; }
+.tick-single .title-row .s { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.tick-single .hint { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.55; }
+.tick-single .field { display: flex; gap: 8px; margin-bottom: 10px; }
+.tick-single .field input { flex: 1; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-app); color: var(--text-primary); font-size: 15px; outline: none; font-family: monospace; letter-spacing: 2px; text-transform: uppercase; }
+.tick-single .field input:focus { border-color: var(--green); }
+.tick-single .field button { background: var(--green-dark); color: #fff; border: none; padding: 14px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.tick-single .field button:hover { background: var(--green); }
+.tick-single .msg { font-size: 13px; min-height: 18px; }
+.tick-single .msg.err { color: var(--red); }
+.tick-single .msg.ok { color: var(--green); }
+.tick-current { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: rgba(0,168,132,0.1); border-radius: 10px; margin-top: 16px; font-size: 13px; color: var(--green-dark); }
+[data-theme="dark"] .tick-current { color: var(--green); }
 
 .call-modal { position: fixed; inset: 0; background: #0b141a; z-index: 200; display: flex; flex-direction: column; }
 .call-modal .remote-video { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; overflow: hidden; background: #000; }
@@ -319,17 +306,16 @@ const state = {
   typing: {}, draft: {}, theme: localStorage.getItem('youlanchat-theme') || 'light',
   recording: false, recordSecs: 0, replyTo: null, forwardingMsg: null,
   menuOpenFor: null, call: null, incomingCall: null,
-  currentPage: null, // 'settings' | 'profile' | 'tick' | null
-  officialChatUnlocked: false,
+  currentPage: null,
 };
 document.documentElement.setAttribute('data-theme', state.theme);
 
 const OFFICIAL_BOT = { id: 'official-youlanchat', name: 'Youlan Chat', isOfficial: true };
 
 const TICK_TYPES = {
-  grey: { key: 'grey', name: 'Grey Tick', sub: 'Member Verified', code: 'IWT-BAM', tooltip: 'Grey Tick [ Member ]' },
-  blue: { key: 'blue', name: 'Blue Tick', sub: 'Advance Verify Tick', code: 'IWY-TCMA', tooltip: 'Advance Verify Tick' },
-  red:  { key: 'red',  name: 'Red Tick',  sub: 'Creator Of Youlan Chat', code: 'IMTO-WMTS', tooltip: 'Creator Of Youlan Chat' },
+  grey: { key: 'grey', name: 'Grey Tick', tooltip: 'Grey Tick [ Member ]', code: 'IWT-BAM' },
+  blue: { key: 'blue', name: 'Blue Tick', tooltip: 'Advance Verify Tick', code: 'IWY-TCMA' },
+  red:  { key: 'red',  name: 'Red Tick',  tooltip: 'Creator Of Youlan Chat', code: 'IMTO-WMTS' },
 };
 
 function tickSvg(type) {
@@ -422,19 +408,34 @@ function connectWS() {
       case 'presence': {
         const map = {};
         for (const d of m.devices) map[d.id] = d;
-        for (const id in state.peers) state.peers[id].online = false;
         let newPeers = false;
+        let peersChanged = false;
+        // mark all offline first
+        for (const id in state.peers) state.peers[id].online = false;
         for (const id in map) {
           if (id === state.me.id) continue;
-          if (!state.peers[id]) newPeers = true;
-          state.peers[id] = { ...state.peers[id], ...map[id] };
+          const incoming = map[id];
+          const existing = state.peers[id];
+          if (!existing) newPeers = true;
+          // Merge profile fields properly
+          state.peers[id] = {
+            id,
+            name: incoming.name || existing?.name || id,
+            online: true,
+            avatar: incoming.avatar !== undefined ? incoming.avatar : (existing?.avatar || ''),
+            about: incoming.about !== undefined ? incoming.about : (existing?.about || ''),
+            tick: incoming.tick !== undefined ? incoming.tick : (existing?.tick || null),
+          };
+          peersChanged = true;
         }
-        if (newPeers) { clearTimeout(window.__presenceT); window.__presenceT = setTimeout(render, 120); }
-        else {
+        if (newPeers) {
+          clearTimeout(window.__presenceT);
+          window.__presenceT = setTimeout(render, 100);
+        } else if (peersChanged) {
+          // Selective update — chat list items + chat header + active chat if needed
           Object.keys(state.peers).forEach(id => refreshChatListItem(id));
-          if (state.activePeer) {
-            const st = document.querySelector('.chat-header .status');
-            if (st && !state.typing[state.activePeer]) st.textContent = state.peers[state.activePeer]?.online ? 'online' : 'offline';
+          if (state.activePeer && state.peers[state.activePeer]) {
+            refreshChatHeaderProfile(state.peers[state.activePeer]);
           }
         }
         break;
@@ -574,20 +575,14 @@ function sendText() {
 function unlockOfficialChat() {
   if (!state.me) return;
   const prof = loadProfile(state.me.id);
-  if (!prof.officialUnlocked) {
-    prof.officialUnlocked = true;
-    saveProfile(state.me.id, prof);
-  }
+  if (!prof.officialUnlocked) { prof.officialUnlocked = true; saveProfile(state.me.id, prof); }
   ensureOfficialChatExists();
 }
-function ensureOfficialChatExists() {
-  if (!state.chats[OFFICIAL_BOT.id]) state.chats[OFFICIAL_BOT.id] = [];
-}
+function ensureOfficialChatExists() { if (!state.chats[OFFICIAL_BOT.id]) state.chats[OFFICIAL_BOT.id] = []; }
 function officialSendToUser(content) {
   ensureOfficialChatExists();
   const msg = { id: 'off-' + Math.random().toString(36).slice(2, 12), from: OFFICIAL_BOT.id, to: state.me.id, createdAt: Date.now(), status: 'read', ...content };
-  state.chats[OFFICIAL_BOT.id].push(msg);
-  saveChats();
+  state.chats[OFFICIAL_BOT.id].push(msg); saveChats();
   if (state.activePeer === OFFICIAL_BOT.id) appendBubbleToDOM(msg);
   refreshChatListItem(OFFICIAL_BOT.id);
   state.unread[OFFICIAL_BOT.id] = (state.unread[OFFICIAL_BOT.id] || 0) + 1;
@@ -601,10 +596,8 @@ function applyTickCode(code) {
   if (!matchedKey) return { ok: false, error: 'Invalid code. Please check and try again.' };
   const prof = loadProfile(state.me.id);
   if (prof.tick === matchedKey) return { ok: false, error: 'You already have this tick.' };
-  // unlock official chat and notify
   unlockOfficialChat();
   officialSendToUser({ kind: 'text', text: `Your account is being checked for ${TICK_TYPES[matchedKey].name}. Please wait 30 seconds for verification…` });
-  // after 30s, apply
   setTimeout(() => {
     const p2 = loadProfile(state.me.id);
     p2.tick = matchedKey;
@@ -801,10 +794,8 @@ function updateCallDuration() {
 window.toggleAudio = (id) => {
   const audio = document.getElementById('audio-' + id);
   const icon = document.getElementById('play-icon-' + id);
-  if (audio.paused) {
-    document.querySelectorAll('audio').forEach(a => { if(a.id !== 'audio-'+id) a.pause(); });
-    audio.play(); icon.innerHTML = ICONS.pause;
-  } else { audio.pause(); icon.innerHTML = ICONS.play; }
+  if (audio.paused) { document.querySelectorAll('audio').forEach(a => { if(a.id !== 'audio-'+id) a.pause(); }); audio.play(); icon.innerHTML = ICONS.pause; }
+  else { audio.pause(); icon.innerHTML = ICONS.play; }
 };
 window.changeSpeed = (id) => {
   const audio = document.getElementById('audio-' + id);
@@ -836,8 +827,7 @@ window.onAudioEnded = (id) => {
 
 /* ============ DOM HELPERS ============ */
 function appendBubbleToDOM(m) {
-  const msgs = document.querySelector('#messages');
-  if (!msgs || !state.activePeer) return;
+  const msgs = document.querySelector('#messages'); if (!msgs || !state.activePeer) return;
   const peerId = state.activePeer;
   const ind = msgs.querySelector('.typing-indicator'); if (ind) ind.remove();
   const seps = msgs.querySelectorAll('.date-sep span');
@@ -903,6 +893,13 @@ function refreshChatListItem(peerId) {
   }
   const placeholder = list.querySelector('div[style*="Looking for devices"]'); if (placeholder) placeholder.remove();
 }
+function refreshChatHeaderProfile(peer) {
+  const header = document.querySelector('.chat-header'); if (!header) return;
+  const avatarEl = header.querySelector('.avatar');
+  const nameEl = header.querySelector('.info .name');
+  if (avatarEl) avatarEl.innerHTML = renderAvatar(peer);
+  if (nameEl) nameEl.innerHTML = esc(peer.name) + renderTickBadge(peer.tick) + (peer.isOfficial ? renderTickBadge('blue') : '');
+}
 function updateTypingStatus() {
   const p = state.peers[state.activePeer]; if (!p) return;
   const st = document.querySelector('.chat-header .status');
@@ -940,21 +937,17 @@ function mountComposer() {
   }
 }
 
-/* ============ PAGE VIEWS ============ */
+/* ============ PAGES ============ */
 function openPage(name) {
   state.currentPage = name;
-  const existing = document.querySelector('.page-view');
-  if (existing) existing.remove();
+  document.querySelector('.page-view')?.remove();
   const tmp = document.createElement('div');
   if (name === 'settings') tmp.innerHTML = renderSettingsPage();
   else if (name === 'profile') tmp.innerHTML = renderProfilePage();
   else if (name === 'tick') tmp.innerHTML = renderTickPage();
   if (tmp.firstElementChild) document.body.appendChild(tmp.firstElementChild);
 }
-function closePage() {
-  state.currentPage = null;
-  document.querySelector('.page-view')?.remove();
-}
+function closePage() { state.currentPage = null; document.querySelector('.page-view')?.remove(); }
 
 function renderSettingsPage() {
   const prof = loadProfile(state.me.id);
@@ -966,17 +959,11 @@ function renderSettingsPage() {
     <div class="page-body">
       <div class="settings-row" data-action="open-profile-page">
         <div class="left">
-          <div class="icon-wrap" style="background:transparent;">
-            <div class="avatar" style="width:40px;height:40px;font-size:16px;">${renderAvatar({ ...state.me, avatar: prof.avatar })}</div>
-          </div>
-          <div>
-            <div class="txt">${esc(state.me.name)}${renderTickBadge(prof.tick)}</div>
-            <div class="sub">${prof.about ? esc(prof.about) : 'Tap to edit profile'}</div>
-          </div>
+          <div class="icon-wrap" style="background:transparent;"><div class="avatar" style="width:40px;height:40px;font-size:16px;">${renderAvatar({ ...state.me, avatar: prof.avatar })}</div></div>
+          <div><div class="txt">${esc(state.me.name)}${renderTickBadge(prof.tick)}</div><div class="sub">${prof.about ? esc(prof.about) : 'Tap to edit profile'}</div></div>
         </div>
         <div class="right">›</div>
       </div>
-
       <div class="settings-row" data-action="toggle-theme-page">
         <div class="left">
           <div class="icon-wrap" style="background:#5f6d76;">${state.theme === 'dark' ? ICONS.dark : ICONS.light}</div>
@@ -984,11 +971,10 @@ function renderSettingsPage() {
         </div>
         <div class="right">›</div>
       </div>
-
       <div class="settings-row" data-action="open-tick-page">
         <div class="left">
           <div class="icon-wrap" style="background:#53bdeb;">${ICONS.verified}</div>
-          <div><div class="txt">Get a Tick</div><div class="sub">${prof.tick ? TICK_TYPES[prof.tick].name + ' · ' + TICK_TYPES[prof.tick].tooltip : 'Enter code to get verified'}</div></div>
+          <div><div class="txt">Get a Tick</div><div class="sub">${prof.tick ? 'Verified: ' + TICK_TYPES[prof.tick].tooltip : 'Enter code to verify'}</div></div>
         </div>
         <div class="right">›</div>
       </div>
@@ -1005,7 +991,7 @@ function renderProfilePage() {
     </div>
     <div class="page-body">
       <div class="profile-pic-edit">
-        <div class="big-avatar" id="prof-avatar-preview">${renderAvatar({ ...state.me, avatar: prof.avatar })}</div>
+        <div class="big-avatar">${renderAvatar({ ...state.me, avatar: prof.avatar })}</div>
         <button class="edit-btn" data-action="pick-avatar">Change Photo</button>
         ${prof.avatar ? `<button class="remove-btn" data-action="remove-avatar">Remove Photo</button>` : ''}
         <input type="file" id="avatar-input" accept="image/*" hidden>
@@ -1027,42 +1013,33 @@ function renderProfilePage() {
 
 function renderTickPage() {
   const prof = loadProfile(state.me.id);
-  const cards = Object.values(TICK_TYPES).map(t => {
-    const owned = prof.tick === t.key;
-    return `<div class="tick-card">
-      <div class="top">
-        <div class="tick-icon">${renderTickBadge(t.key)}</div>
-        <div class="info">
-          <div class="title">${esc(t.name)}</div>
-          <div class="sub">${esc(t.sub)}</div>
-        </div>
-        ${owned ? `<div class="owned-pill">✓ Owned</div>` : ''}
-      </div>
-      ${owned ? '' : `
-        <div class="row">
-          <input type="text" placeholder="Enter code" data-code-for="${t.key}" autocomplete="off" spellcheck="false">
-          <button data-action="apply-tick" data-tick="${t.key}">Apply</button>
-        </div>
-        <div class="error" data-error-for="${t.key}"></div>
-        <div class="success" data-success-for="${t.key}"></div>
-      `}
-    </div>`;
-  }).join('');
   return `<div class="page-view">
     <div class="page-header">
       <button class="back-btn" data-action="page-back">${ICONS.back}</button>
       <h1>Get a Tick</h1>
     </div>
     <div class="page-body">
-      <p style="font-size:13px; color:var(--text-secondary); margin-bottom:16px; line-height:1.6;">
-        Enter the verification code you received for each tick type and tap Apply. Verification may take a moment.
-      </p>
-      ${cards}
+      <div class="tick-single">
+        <div class="title-row">
+          <div class="icon-big">${ICONS.verified}</div>
+          <div>
+            <div class="t">Verification</div>
+            <div class="s">Unlock a verification badge on your account</div>
+          </div>
+        </div>
+        <div class="hint">Enter the verification code you received. Your account will be checked and the tick will be applied automatically.</div>
+        <div class="field">
+          <input id="tick-code-input" type="text" placeholder="Enter code" autocomplete="off" spellcheck="false">
+          <button data-action="apply-tick">Apply</button>
+        </div>
+        <div class="msg" id="tick-msg"></div>
+        ${prof.tick ? `<div class="tick-current">${renderTickBadge(prof.tick)} Current: ${esc(TICK_TYPES[prof.tick].tooltip)}</div>` : ''}
+      </div>
     </div>
   </div>`;
 }
 
-/* ============ RENDER (main app) ============ */
+/* ============ MAIN RENDER ============ */
 function render() {
   const app = document.getElementById('app');
   if (!state.me) { app.innerHTML = welcomeHtml(); bindWelcome(); return; }
@@ -1117,11 +1094,12 @@ function bindWelcome() {
 
 function appHtml() {
   const open = !!state.activePeer;
+  const myProf = state.me ? loadProfile(state.me.id) : { avatar: '', tick: null };
   return `
     <aside class="sidebar ${open ? 'hidden-mobile' : ''}">
       <div class="sidebar-header">
-        <div class="avatar" data-action="open-profile-page">${renderAvatar(state.me)}</div>
-        <div class="info"><div class="name">${esc(state.me.name)}${renderTickBadge(loadProfile(state.me.id).tick)}</div></div>
+        <div class="avatar" data-action="open-profile-page">${renderAvatar({ ...state.me, avatar: myProf.avatar })}</div>
+        <div class="info"><div class="name">${esc(state.me.name)}${renderTickBadge(myProf.tick)}</div></div>
         <div class="actions">
           <button data-action="toggle-theme">${state.theme === 'dark' ? ICONS.light : ICONS.dark}</button>
           <button data-action="open-settings-page">${ICONS.settings}</button>
@@ -1394,13 +1372,11 @@ document.addEventListener('click', e => {
       break;
     }
 
-    /* PAGES */
     case 'open-settings-page': openPage('settings'); break;
     case 'open-profile-page': openPage('profile'); break;
     case 'open-tick-page': openPage('tick'); break;
     case 'page-back': closePage(); break;
 
-    /* PROFILE */
     case 'pick-avatar': document.querySelector('#avatar-input')?.click(); break;
     case 'remove-avatar': {
       const prof = loadProfile(state.me.id); prof.avatar = '';
@@ -1420,28 +1396,20 @@ document.addEventListener('click', e => {
       closePage(); render(); break;
     }
 
-    /* TICK APPLY */
     case 'apply-tick': {
-      const type = el.dataset.tick;
-      const card = el.closest('.tick-card');
-      const input = card.querySelector('input');
-      const err = card.querySelector('[data-error-for]');
-      const succ = card.querySelector('[data-success-for]');
+      const input = document.getElementById('tick-code-input');
+      const msg = document.getElementById('tick-msg');
       const val = (input?.value || '').trim();
-      err.classList.remove('show'); succ.classList.remove('show');
+      if (!val) { msg.className = 'msg err'; msg.textContent = 'Please enter a code.'; return; }
       const res = applyTickCode(val);
-      if (!res.ok) { err.textContent = res.error; err.classList.add('show'); return; }
+      if (!res.ok) { msg.className = 'msg err'; msg.textContent = res.error; return; }
       input.value = '';
-      succ.textContent = 'Code accepted. Verification in progress…';
-      succ.classList.add('show');
-      // refresh list & sidebar tick badge
+      msg.className = 'msg ok';
+      msg.textContent = 'Code accepted. Your account is being checked…';
       render();
-      // Re-open tick page to reflect states
-      if (state.currentPage === 'tick') setTimeout(() => openPage('tick'), 400);
       break;
     }
 
-    /* CALLS */
     case 'audio-call': startCall('audio'); break;
     case 'video-call': startCall('video'); break;
     case 'accept': acceptCall(); break;
@@ -1450,7 +1418,6 @@ document.addEventListener('click', e => {
     case 'mute': toggleMute(); break;
     case 'cam': toggleCam(); break;
 
-    /* MENU */
     case 'open-menu': {
       state.menuOpenFor = el.dataset.id;
       document.querySelector('[data-modal="menu"]')?.remove();
@@ -1548,7 +1515,6 @@ document.addEventListener('click', e => {
   }
 });
 
-/* Avatar file upload */
 document.addEventListener('change', async (e) => {
   if (e.target.id === 'avatar-input') {
     const f = e.target.files?.[0]; if (!f) return;
