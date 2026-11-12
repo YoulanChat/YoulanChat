@@ -596,18 +596,12 @@ function applyTickCode(code) {
   if (!matchedKey) return { ok: false, error: 'Invalid code. Please check and try again.' };
   const prof = loadProfile(state.me.id);
   if (prof.tick === matchedKey) return { ok: false, error: 'You already have this tick.' };
+  prof.tick = matchedKey;
+  saveProfile(state.me.id, prof);
   unlockOfficialChat();
-  officialSendToUser({ kind: 'text', text: `Your account is being checked for ${TICK_TYPES[matchedKey].name}. Please wait 30 seconds for verification…` });
-  setTimeout(() => {
-    const p2 = loadProfile(state.me.id);
-    p2.tick = matchedKey;
-    p2.officialUnlocked = true;
-    saveProfile(state.me.id, p2);
-    officialSendToUser({ kind: 'text', text: `✅ Verification complete! You have been granted the "${TICK_TYPES[matchedKey].tooltip}" on YoulanChat.` });
-    wsSend({ type: 'hello', from: state.me.id, name: state.me.name, avatar: p2.avatar, about: p2.about, tick: p2.tick });
-    refreshChatListItem(OFFICIAL_BOT.id);
-    render();
-  }, 30000);
+  officialSendToUser({ kind: 'text', text: `🎉 Code redeemed! You've unlocked the "${TICK_TYPES[matchedKey].tooltip}" badge on YoulanChat.` });
+  wsSend({ type: 'hello', from: state.me.id, name: state.me.name, avatar: prof.avatar, about: prof.about, tick: prof.tick });
+  refreshChatListItem(OFFICIAL_BOT.id);
   return { ok: true, matchedKey };
 }
 
@@ -672,10 +666,16 @@ async function startCall(type) {
     outgoingAudio.currentTime = 0; outgoingAudio.play().catch(()=>{});
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' });
     const pc = new RTCPeerConnection(RTC_CFG);
-    stream.getTracks().forEach(t => pc.addTrack(t, stream));
+    const localTrackIds = new Set();
+    stream.getTracks().forEach(t => { pc.addTrack(t, stream); localTrackIds.add(t.id); });
     state.call = { peerId, type, stream, pc, startedAt: Date.now(), state: 'calling', muted: false, cameraOff: false, remoteStream: null };
     pc.onicecandidate = e => e.candidate && wsSend({ type: 'signal', from: state.me.id, to: peerId, data: { candidate: e.candidate } });
-    pc.ontrack = e => { state.call.remoteStream = e.streams[0]; attachCallStreams(); };
+    pc.ontrack = e => {
+      if (localTrackIds.has(e.track.id)) return;
+      if (!state.call.remoteStream) state.call.remoteStream = new MediaStream();
+      if (!state.call.remoteStream.getTracks().includes(e.track)) state.call.remoteStream.addTrack(e.track);
+      attachCallStreams();
+    };
     pc.onconnectionstatechange = () => {
       if (!state.call) return;
       if (pc.connectionState === 'connected') state.call.state = 'connected';
@@ -717,11 +717,17 @@ async function acceptCall() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: inc.type === 'video' });
     const pc = new RTCPeerConnection(RTC_CFG);
-    stream.getTracks().forEach(t => pc.addTrack(t, stream));
+    const localTrackIds = new Set();
+    stream.getTracks().forEach(t => { pc.addTrack(t, stream); localTrackIds.add(t.id); });
     state.call = { peerId: inc.peerId, type: inc.type, stream, pc, startedAt: Date.now(), state: 'connected', muted: false, cameraOff: false, remoteStream: null };
     state.incomingCall = null; unmountIncomingModal();
     pc.onicecandidate = e => e.candidate && wsSend({ type: 'signal', from: state.me.id, to: inc.peerId, data: { candidate: e.candidate } });
-    pc.ontrack = e => { state.call.remoteStream = e.streams[0]; attachCallStreams(); };
+    pc.ontrack = e => {
+      if (localTrackIds.has(e.track.id)) return;
+      if (!state.call.remoteStream) state.call.remoteStream = new MediaStream();
+      if (!state.call.remoteStream.getTracks().includes(e.track)) state.call.remoteStream.addTrack(e.track);
+      attachCallStreams();
+    };
     await pc.setRemoteDescription(new RTCSessionDescription(inc.sdp));
     const ans = await pc.createAnswer();
     await pc.setLocalDescription(ans);
@@ -767,6 +773,8 @@ function attachCallStreams() {
   if (lv && state.call.stream) { if (lv.srcObject !== state.call.stream) lv.srcObject = state.call.stream; lv.play().catch(()=>{}); }
   const rv = document.querySelector('#remote-video');
   if (rv && state.call.remoteStream) { if (rv.srcObject !== state.call.remoteStream) rv.srcObject = state.call.remoteStream; rv.play().catch(()=>{}); }
+  const ra = document.querySelector('#remote-audio');
+  if (ra && state.call.remoteStream) { if (ra.srcObject !== state.call.remoteStream) ra.srcObject = state.call.remoteStream; ra.play().catch(()=>{}); }
   if (state.call.remoteStream) { const ov = document.querySelector('.remote-video .connecting-overlay'); if (ov) ov.remove(); }
 }
 function mountCallModal() {
@@ -1309,7 +1317,7 @@ function renderCall() {
            ${!c.remoteStream ? `<div class="connecting-overlay"><div class="avatar" style="width:90px; height:90px; font-size:36px; background:#2a3942; color:#8696a0; overflow:hidden;">${renderAvatar(p)}</div><div>Connecting video…</div></div>` : ''}
          </div>
          <video id="local-video" class="local-video-pip" autoplay playsinline muted></video>`
-      : `<div class="remote-video"><div class="avatar" style="width:100px; height:100px; font-size:40px; margin-bottom:20px; overflow:hidden;">${renderAvatar(p)}</div></div>`}
+      : `<div class="remote-video"><div class="avatar" style="width:100px; height:100px; font-size:40px; margin-bottom:20px; overflow:hidden;">${renderAvatar(p)}</div></div><audio id="remote-audio" autoplay playsinline hidden></audio>`}
     <div class="call-controls">
       <button data-action="mute">${c.muted ? '🔇' : '🔊'}</button>
       ${c.type === 'video' ? `<button data-action="cam">${c.cameraOff ? '📷' : '🎥'}</button>` : ''}
@@ -1405,7 +1413,7 @@ document.addEventListener('click', e => {
       if (!res.ok) { msg.className = 'msg err'; msg.textContent = res.error; return; }
       input.value = '';
       msg.className = 'msg ok';
-      msg.textContent = 'Code accepted. Your account is being checked…';
+      msg.textContent = 'Code accepted — badge unlocked!';
       render();
       break;
     }
